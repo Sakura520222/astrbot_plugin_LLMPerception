@@ -17,6 +17,21 @@ except ImportError:
     logger.warning("chinese-calendar 库未安装，节假日识别功能将受限")
 
 
+# 常量定义
+WEEKDAY_NAMES = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+
+PLATFORM_DISPLAY_NAMES = {
+    "aiocqhttp": "QQ",
+    "telegram": "Telegram",
+    "discord": "Discord",
+    "weixin_official_account": "微信公众号",
+    "wecom": "企业微信",
+    "wecom_ai_bot": "企业微信AI机器人",
+    "satori": "Satori",
+    "misskey": "Misskey",
+}
+
+
 @register("add_time", "miaomiao", "让每次请求都携带这次请求的时间", "1.0.0")
 class MyPlugin(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
@@ -28,17 +43,21 @@ class MyPlugin(Star):
         self.enable_platform = config.get("enable_platform_perception", True)
         self.holiday_country = config.get("holiday_country", "CN")
 
+        # 初始化时区
         try:
             self.timezone = zoneinfo.ZoneInfo(timezone_name)
-            calendar_status = "已启用" if CHINESE_CALENDAR_AVAILABLE else "受限(未安装chinese-calendar)"
-            logger.info(
-                f"LLMPerception 插件已加载 | 时区: {timezone_name} | "
-                f"节假日感知: {self.enable_holiday}({calendar_status}) | "
-                f"平台感知: {self.enable_platform}"
-            )
-        except Exception as e:
-            logger.error(f"时区设置错误: {e}，使用默认时区 Asia/Shanghai")
+        except (zoneinfo.ZoneInfoNotFoundError, KeyError) as e:
+            logger.error(f"无效的时区设置 '{timezone_name}': {e}，使用默认时区 Asia/Shanghai")
             self.timezone = zoneinfo.ZoneInfo("Asia/Shanghai")
+            timezone_name = "Asia/Shanghai"
+
+        # 记录插件加载信息
+        calendar_status = "已启用" if CHINESE_CALENDAR_AVAILABLE else "受限(未安装chinese-calendar)"
+        logger.info(
+            f"LLMPerception 插件已加载 | 时区: {timezone_name} | "
+            f"节假日感知: {self.enable_holiday}({calendar_status}) | "
+            f"平台感知: {self.enable_platform}"
+        )
 
     def _get_holiday_info(self, current_time: datetime) -> str:
         """获取节假日信息"""
@@ -49,8 +68,7 @@ class MyPlugin(Star):
 
         # 判断是否为周末
         weekday = current_time.weekday()
-        weekday_names = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
-        info_parts.append(weekday_names[weekday])
+        info_parts.append(WEEKDAY_NAMES[weekday])
 
         # 使用 chinese-calendar 库进行节假日判断（仅支持中国）
         if self.holiday_country == "CN" and CHINESE_CALENDAR_AVAILABLE:
@@ -106,27 +124,19 @@ class MyPlugin(Star):
 
         # 平台类型
         platform_name = event.get_platform_name()
-        platform_display = {
-            "aiocqhttp": "QQ",
-            "telegram": "Telegram",
-            "discord": "Discord",
-            "weixin_official_account": "微信公众号",
-            "wecom": "企业微信",
-            "satori": "Satori",
-            "misskey": "Misskey",
-        }.get(platform_name, platform_name)
-
+        platform_display = PLATFORM_DISPLAY_NAMES.get(platform_name, platform_name)
         info_parts.append(f"平台: {platform_display}")
 
-        # 判断是群聊还是私聊
-        if event.is_group_msg():
+        # 判断是群聊还是私聊（通过 MessageType 判断）
+        from astrbot.core.platform.message_type import MessageType
+        if event.message_obj and event.message_obj.type == MessageType.GROUP_MESSAGE:
             info_parts.append("群聊")
-        else:
+        elif event.message_obj and event.message_obj.type == MessageType.FRIEND_MESSAGE:
             info_parts.append("私聊")
 
         # 消息类型
         message_chain = event.message_obj
-        if message_chain:
+        if message_chain and hasattr(message_chain, 'message'):
             has_image = any(seg.type == "image" for seg in message_chain.message)
             has_audio = any(seg.type in ["voice", "audio"] for seg in message_chain.message)
             has_video = any(seg.type == "video" for seg in message_chain.message)
