@@ -1,0 +1,26 @@
+{
+    "timezone": {
+        "type": "str",
+        "description": "时区设置",
+        "default": "Asia/Shanghai",
+        "hint": "设置时间戳的时区，例如：Asia/Shanghai, Asia/Tokyo, America/New_York, Europe/London, UTC 等"
+    },
+    "enable_holiday_perception": {
+        "type": "bool",
+        "description": "启用节假日感知",
+        "default": true,
+        "hint": "启用后会在消息中携带当前是否为节假日、周末等信息"
+    },
+    "enable_platform_perception": {
+        "type": "bool",
+        "description": "启用平台环境感知",
+        "default": true,
+        "hint": "启用后会在消息中携带平台类型（QQ/Telegram等）、是否群聊、消息类型等环境信息"
+    },
+    "holiday_country": {
+        "type": "str",
+        "description": "节假日所属国家/地区",
+        "default": "CN",
+        "hint": "设置节假日判断的国家/地区代码，如 CN(中国)、US(美国)、JP(日本)等"
+    }
+}
