@@ -6,7 +6,8 @@ import zoneinfo
 from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.provider import ProviderRequest
-from astrbot.api.star import Context, Star, register, AstrBotConfig
+from astrbot.api.star import Context, Star, register
+from astrbot.api.all import AstrBotConfig
 
 try:
     import chinese_calendar as calendar_cn
