@@ -8,7 +8,7 @@ from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.provider import ProviderRequest
 from astrbot.api.star import Context, Star, register
 from astrbot.api.all import AstrBotConfig
-
+from astrbot.core.platform.message_type import MessageType
 try:
     import chinese_calendar as calendar_cn
     CHINESE_CALENDAR_AVAILABLE = True
@@ -83,7 +83,7 @@ class MyPlugin(Star):
                 info_parts.append("法定节假日")
                 # 获取节日名称
                 holiday_name = calendar_cn.get_holiday_detail(current_date)
-                if holiday_name:
+                if holiday_name and len(holiday_name) > 1 and holiday_name[1]:
                     info_parts.append(holiday_name[1])  # holiday_name 是 (False/True, '节日名称')
             elif is_workday:
                 if weekday >= 5:
@@ -128,7 +128,7 @@ class MyPlugin(Star):
         info_parts.append(f"平台: {platform_display}")
 
         # 判断是群聊还是私聊（通过 MessageType 判断）
-        from astrbot.core.platform.message_type import MessageType
+
         if event.message_obj and event.message_obj.type == MessageType.GROUP_MESSAGE:
             info_parts.append("群聊")
         elif event.message_obj and event.message_obj.type == MessageType.FRIEND_MESSAGE:
