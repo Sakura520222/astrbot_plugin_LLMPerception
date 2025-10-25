@@ -22,5 +22,57 @@
         "description": "节假日所属国家/地区",
         "default": "CN",
         "hint": "设置节假日判断的国家/地区代码，如 CN(中国)、US(美国)、JP(日本)等"
+    },
+    "enable_custom_perception": {
+        "type": "bool",
+        "description": "启用自定义感知功能",
+        "default": false,
+        "hint": "启用后可以添加用户自定义的感知信息"
+    },
+    "custom_perception_rules": {
+        "type": "list",
+        "description": "自定义感知规则",
+        "default": [],
+        "hint": "自定义感知规则列表，每个规则包含名称、条件和内容",
+        "items": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "规则名称",
+                    "hint": "规则的唯一标识名称"
+                },
+                "condition": {
+                    "type": "string",
+                    "description": "触发条件",
+                    "hint": "Python表达式，当表达式为True时触发该规则。可用变量：current_time(当前时间), event(消息事件), platform_name(平台名称), message_type(消息类型)"
+                },
+                "content": {
+                    "type": "string",
+                    "description": "感知内容",
+                    "hint": "当条件满足时显示的感知内容。可用变量：current_time(当前时间), event(消息事件), platform_name(平台名称), message_type(消息类型)"
+                },
+                "enabled": {
+                    "type": "bool",
+                    "description": "是否启用",
+                    "default": true,
+                    "hint": "是否启用此规则"
+                }
+            },
+            "required": ["name", "condition", "content"]
+        }
+    },
+    "log_level": {
+        "type": "string",
+        "description": "日志输出级别",
+        "default": "INFO",
+        "hint": "控制台日志输出级别：DEBUG, INFO, WARNING, ERROR",
+        "enum": ["DEBUG", "INFO", "WARNING", "ERROR"]
+    },
+    "enable_detailed_logging": {
+        "type": "bool",
+        "description": "启用详细日志输出",
+        "default": true,
+        "hint": "启用后会在每次请求处理时输出详细信息"
     }
 }
