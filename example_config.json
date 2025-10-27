@@ -2,7 +2,26 @@
     "timezone": "Asia/Shanghai",
     "enable_holiday_perception": true,
     "enable_platform_perception": true,
-    "holiday_country": "CN",
+    "holiday_country": ["CN", "US", "JP"],
+    "// holiday_country 支持的国家代码列表": [
+        "CN - 中国 (使用chinese-calendar库)",
+        "US - 美国",
+        "GB - 英国",
+        "JP - 日本",
+        "KR - 韩国",
+        "DE - 德国",
+        "FR - 法国",
+        "CA - 加拿大",
+        "AU - 澳大利亚",
+        "IN - 印度",
+        "BR - 巴西",
+        "RU - 俄罗斯",
+        "MX - 墨西哥",
+        "IT - 意大利",
+        "ES - 西班牙",
+        "// 支持同时识别多个国家的节假日，默认配置为 [\"CN\", \"US\", \"JP\"]",
+        "// 更多国家代码请参考: https://github.com/dr-prodigy/python-holidays#available-countries"
+    ],
     "enable_custom_perception": true,
     "custom_perception_rules": [
         {

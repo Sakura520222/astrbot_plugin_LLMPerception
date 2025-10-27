@@ -18,10 +18,13 @@
         "hint": "启用后会在消息中携带平台类型（QQ/Telegram等）、是否群聊、消息类型等环境信息"
     },
     "holiday_country": {
-        "type": "string",
-        "description": "节假日所属国家/地区",
-        "default": "CN",
-        "hint": "设置节假日判断的国家/地区代码，如 CN(中国)、US(美国)、JP(日本)等"
+        "type": "list",
+        "description": "节假日所属国家/地区列表",
+        "default": ["CN", "US", "JP"],
+        "hint": "设置节假日判断的国家/地区代码列表，如 CN(中国)、US(美国)、JP(日本)等，支持同时识别多个国家的节假日",
+        "items": {
+            "type": "string"
+        }
     },
     "enable_custom_perception": {
         "type": "bool",

@@ -46,9 +46,11 @@ LLMPerception 是一个为 AstrBot 设计的智能环境感知插件，旨在增
 
 ### 🎉 节假日感知
 - 🏮 **法定节假日识别**：春节、清明、劳动节、端午、中秋、国庆、元旦等
+- 🌍 **多国家同时识别**：支持同时识别多个国家的节假日，默认配置为中国、美国、日本
+- 🌐 **智能库切换**：中国节假日使用 `chinese-calendar` 库，国际节假日使用 `holidays` 库
 - 🔄 **调休智能判断**：自动识别调休工作日（如国庆期间周末上班）
 - 📅 **星期识别**：周一到周日、工作日/周末精确判断
-- 📚 **数据可靠**：基于 `chinese-calendar` 库，官方数据支持
+- 📚 **数据可靠**：中国节假日基于 `chinese-calendar` 库，国际节假日基于 `holidays` 库
 
 ### 🌐 平台环境感知
 - 💬 **平台类型识别**：QQ、Telegram、Discord、微信公众号、企业微信等
@@ -62,7 +64,22 @@ LLMPerception 是一个为 AstrBot 设计的智能环境感知插件，旨在增
 
 ## 📋 更新日志
 
-### v1.5.0 (当前版本)
+### v1.6.0 (当前版本)
+**发布日期**: 2025-10-27
+
+#### ✨ 新增功能
+- 🌍 **多国家节假日支持**：新增支持美国、英国、日本、德国、法国等15+个国家的节假日识别
+- 🔄 **智能库切换**：中国节假日使用chinese-calendar库，国际节假日使用holidays库
+- 🛡️ **增强错误处理**：添加不支持国家代码检测和降级方案
+
+#### ⚙️ 配置增强
+- 📝 **更新holiday_country配置**：支持更多国家代码选项
+- 📋 **配置架构更新**：完善配置提示信息和参考链接
+
+#### 📚 文档优化
+- 🔧 **功能文档更新**：添加多国家节假日支持说明和使用示例
+
+### v1.5.0
 **发布日期**: 2025-10-27
 
 #### ✨ 新增功能
@@ -95,7 +112,7 @@ LLMPerception 是一个为 AstrBot 设计的智能环境感知插件，旨在增
 | `timezone` | string | `Asia/Shanghai` | 🌍 时区设置，支持 `Asia/Tokyo`, `America/New_York`, `UTC` 等 |
 | `enable_holiday_perception` | bool | `true` | 🎉 启用/禁用节假日感知功能 |
 | `enable_platform_perception` | bool | `true` | 💬 启用/禁用平台环境感知 |
-| `holiday_country` | string | `CN` | 🏮 节假日国家/地区代码（目前仅支持 CN） |
+| `holiday_country` | list | `["CN", "US", "JP"]` | 🏮 节假日国家/地区代码列表（支持同时识别多个国家，如 CN/中国、US/美国、GB/英国、JP/日本、DE/德国、FR/法国等15+个国家） |
 | `enable_custom_perception` | bool | `false` | 🔧 启用/禁用自定义感知功能 |
 | `custom_perception_rules` | list | `[]` | 📋 自定义感知规则列表 |
 | `log_level` | string | `INFO` | 🔍 日志输出级别：DEBUG/INFO/WARNING/ERROR |
@@ -183,6 +200,13 @@ LLMPerception 是一个为 AstrBot 设计的智能环境感知插件，旨在增
 新年快乐！
 ```
 
+### 🌍 多国家节假日场景
+配置多个国家时，AI能够同时识别不同国家的节假日：
+```
+[发送时间: 2025-12-25 10:00:00 | 周四, 工作日, 圣诞节(美国), 上午 | 平台: Discord, 群聊]
+圣诞快乐！
+```
+
 ### 🔄 调休工作日场景
 调休工作日AI能够理解特殊安排：
 ```
@@ -210,11 +234,14 @@ LLMPerception 是一个为 AstrBot 设计的智能环境感知插件，旨在增
 3. 重启 AstrBot 服务
 
 ### 自动依赖安装
-插件会自动安装所需依赖 `chinese-calendar`
+插件会自动安装所需依赖：
+- `chinese-calendar>=1.9.0`：用于准确的中国节假日和调休识别
+- `holidays>=0.40`：用于国际节假日识别
 
 ## 📦 依赖
 
 - `chinese-calendar>=1.9.0`：用于准确的中国节假日和调休识别
+- `holidays>=0.40`：用于国际节假日识别
 
 ## 💡 使用建议
 

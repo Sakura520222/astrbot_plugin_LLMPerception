@@ -14,7 +14,14 @@ try:
     CHINESE_CALENDAR_AVAILABLE = True
 except ImportError:
     CHINESE_CALENDAR_AVAILABLE = False
-    logger.warning("chinese-calendar 库未安装，节假日识别功能将受限")
+    logger.warning("chinese-calendar 库未安装，中国节假日识别功能将受限")
+
+try:
+    import holidays
+    HOLIDAYS_AVAILABLE = True
+except ImportError:
+    HOLIDAYS_AVAILABLE = False
+    logger.warning("holidays 库未安装，国外节假日识别功能将受限")
 
 
 # 常量定义
@@ -41,7 +48,19 @@ class MyPlugin(Star):
         timezone_name = config.get("timezone", "Asia/Shanghai")
         self.enable_holiday = config.get("enable_holiday_perception", True)
         self.enable_platform = config.get("enable_platform_perception", True)
-        self.holiday_country = config.get("holiday_country", "CN")
+        
+        # 处理holiday_country配置，支持字符串和列表格式
+        holiday_country_config = config.get("holiday_country", ["CN", "US", "JP"])
+        if isinstance(holiday_country_config, str):
+            # 如果是字符串，转换为单元素列表（向后兼容）
+            self.holiday_country = [holiday_country_config]
+        elif isinstance(holiday_country_config, list):
+            # 如果是列表，直接使用
+            self.holiday_country = holiday_country_config
+        else:
+            # 其他类型，使用默认值
+            self.holiday_country = ["CN", "US", "JP"]
+            
         self.enable_custom = config.get("enable_custom_perception", False)
         self.custom_rules = config.get("custom_perception_rules", [])
         self.log_level = config.get("log_level", "INFO")
@@ -60,11 +79,18 @@ class MyPlugin(Star):
 
         # 记录插件加载信息
         calendar_status = "已启用" if CHINESE_CALENDAR_AVAILABLE else "受限(未安装chinese-calendar)"
+        holidays_status = "已启用" if HOLIDAYS_AVAILABLE else "受限(未安装holidays)"
         custom_status = f"已启用({len(self.custom_rules)}条规则)" if self.enable_custom else "未启用"
         detailed_logging_status = "已启用" if self.enable_detailed_logging else "未启用"
+        
+        # 格式化国家列表显示
+        country_display = ", ".join(self.holiday_country)
+        if len(self.holiday_country) > 3:
+            country_display = f"{', '.join(self.holiday_country[:3])}...等{len(self.holiday_country)}个国家"
+        
         logger.info(
             f"LLMPerception 插件已加载 | 时区: {timezone_name} | "
-            f"节假日感知: {self.enable_holiday}({calendar_status}) | "
+            f"节假日感知: {self.enable_holiday}(国家列表: [{country_display}], 中国库: {calendar_status}, 国际库: {holidays_status}) | "
             f"平台感知: {self.enable_platform} | "
             f"自定义感知: {custom_status} | "
             f"详细日志: {detailed_logging_status} | "
@@ -72,7 +98,7 @@ class MyPlugin(Star):
         )
 
     def _get_holiday_info(self, current_time: datetime) -> str:
-        """获取节假日信息"""
+        """获取节假日信息（支持多国家同时识别）"""
         if not self.enable_holiday:
             return ""
 
@@ -82,49 +108,104 @@ class MyPlugin(Star):
         weekday = current_time.weekday()
         info_parts.append(WEEKDAY_NAMES[weekday])
 
-        # 使用 chinese-calendar 库进行节假日判断（仅支持中国）
-        if self.holiday_country == "CN" and CHINESE_CALENDAR_AVAILABLE:
+        # 获取当前日期
+        current_date = date(current_time.year, current_time.month, current_time.day)
+        
+        # 存储检测到的节假日信息
+        holiday_detections = []
+        workday_status = None
+        
+        # 遍历所有配置的国家，检测节假日
+        for country_code in self.holiday_country:
             try:
-                current_date = date(current_time.year, current_time.month, current_time.day)
+                # 中国节假日（使用chinese-calendar库）
+                if country_code == "CN":
+                    if CHINESE_CALENDAR_AVAILABLE:
+                        try:
+                            # 判断是否为法定节假日
+                            is_holiday = calendar_cn.is_holiday(current_date)
+                            # 判断是否为工作日（考虑调休）
+                            is_workday = calendar_cn.is_workday(current_date)
 
-                # 判断是否为法定节假日
-                is_holiday = calendar_cn.is_holiday(current_date)
-                # 判断是否为工作日（考虑调休）
-                is_workday = calendar_cn.is_workday(current_date)
-
-                if is_holiday:
-                    info_parts.append("法定节假日")
-                    # 获取节日名称
-                    holiday_name = calendar_cn.get_holiday_detail(current_date)
-                    if holiday_name and len(holiday_name) > 1 and holiday_name[1]:
-                        info_parts.append(holiday_name[1])  # holiday_name 是 (False/True, '节日名称')
-                        self._log_message("DEBUG", f"检测到节假日: {holiday_name[1]}")
-                elif is_workday:
-                    if weekday >= 5:
-                        info_parts.append("调休工作日")
-                        self._log_message("DEBUG", "检测到调休工作日")
-                    else:
-                        info_parts.append("工作日")
-                        self._log_message("DEBUG", "检测到工作日")
-                else:
-                    info_parts.append("周末")
-                    self._log_message("DEBUG", "检测到周末")
+                            if is_holiday:
+                                # 获取节日名称
+                                holiday_name = calendar_cn.get_holiday_detail(current_date)
+                                if holiday_name and len(holiday_name) > 1 and holiday_name[1]:
+                                    holiday_detections.append(f"中国:{holiday_name[1]}")
+                                    self._log_message("DEBUG", f"检测到中国节假日: {holiday_name[1]}")
+                                else:
+                                    holiday_detections.append("中国:法定节假日")
+                            
+                            # 设置工作日状态（中国节假日库有更精确的判断）
+                            if workday_status is None:
+                                if is_workday:
+                                    if weekday >= 5:
+                                        workday_status = "调休工作日"
+                                    else:
+                                        workday_status = "工作日"
+                                else:
+                                    workday_status = "周末"
+                                    
+                        except Exception as e:
+                            error_msg = f"中国节假日判断失败: {e}"
+                            self._log_message("WARNING", error_msg)
+                            logger.warning(error_msg)
                     
+                # 国外节假日（使用holidays库）
+                elif HOLIDAYS_AVAILABLE:
+                    try:
+                        # 根据国家代码创建holidays对象
+                        country_holidays = holidays.country_holidays(country_code)
+                        
+                        # 检查是否为节假日
+                        holiday_name = country_holidays.get(current_date)
+                        
+                        if holiday_name:
+                            # 获取节日名称（可能有多语言，取第一个）
+                            if isinstance(holiday_name, (list, tuple)):
+                                holiday_name = holiday_name[0]
+                            
+                            # 获取国家名称映射
+                            country_names = {
+                                "US": "美国", "GB": "英国", "JP": "日本", "DE": "德国", 
+                                "FR": "法国", "CA": "加拿大", "AU": "澳大利亚", "IT": "意大利",
+                                "ES": "西班牙", "KR": "韩国", "RU": "俄罗斯", "BR": "巴西",
+                                "IN": "印度", "MX": "墨西哥", "ZA": "南非"
+                            }
+                            country_name = country_names.get(country_code, country_code)
+                            holiday_detections.append(f"{country_name}:{holiday_name}")
+                            self._log_message("DEBUG", f"检测到{country_code}节假日: {holiday_name}")
+                            
+                    except holidays.exceptions.UnknownCountryError:
+                        error_msg = f"不支持的国家代码: {country_code}，请检查配置"
+                        self._log_message("ERROR", error_msg)
+                        logger.error(error_msg)
+                    except Exception as e:
+                        error_msg = f"{country_code}节假日判断失败: {e}"
+                        self._log_message("WARNING", error_msg)
+                        logger.warning(error_msg)
+                        
             except Exception as e:
-                error_msg = f"节假日判断失败: {e}，使用简单判断"
+                error_msg = f"节假日判断异常（国家:{country_code}）: {e}"
                 self._log_message("WARNING", error_msg)
                 logger.warning(error_msg)
-                # 降级到简单判断
-                if weekday >= 5:
-                    info_parts.append("周末")
-                else:
-                    info_parts.append("工作日")
+        
+        # 处理节假日检测结果
+        if holiday_detections:
+            # 如果有检测到节假日，添加节假日信息
+            info_parts.append("节假日")
+            # 添加所有检测到的节假日名称
+            info_parts.extend(holiday_detections)
         else:
-            # 降级方案：简单判断周末
-            if weekday >= 5:
-                info_parts.append("周末")
-            else:
-                info_parts.append("工作日")
+            # 如果没有检测到节假日，设置工作日状态
+            if workday_status is None:
+                # 如果没有中国节假日库的精确判断，使用简单周末判断
+                if weekday >= 5:
+                    workday_status = "周末"
+                else:
+                    workday_status = "工作日"
+            
+            info_parts.append(workday_status)
 
         # 判断时间段
         hour = current_time.hour
