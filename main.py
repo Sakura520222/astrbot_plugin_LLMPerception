@@ -211,6 +211,152 @@ class MyPlugin(Star):
                             country_name = country_names.get(country_code, country_code)
                             holiday_detections.append(f"{country_name}:{holiday_name}")
                             self._log_message("DEBUG", f"检测到{country_code}节假日: {holiday_name}")
+                        
+                        # 特殊处理万圣节（10月31日），因为某些版本的holidays库可能不包含它
+                        elif current_date.month == 10 and current_date.day == 31:
+                            # 万圣节在多个国家庆祝
+                            halloween_countries = ["US", "CA", "GB", "AU", "IE", "NZ"]
+                            if country_code in halloween_countries:
+                                country_names = {
+                                    "US": "美国", "GB": "英国", "CA": "加拿大", 
+                                    "AU": "澳大利亚", "IE": "爱尔兰", "NZ": "新西兰"
+                                }
+                                country_name = country_names.get(country_code, country_code)
+                                holiday_detections.append(f"{country_name}:万圣节")
+                                self._log_message("DEBUG", f"检测到{country_code}万圣节")
+                        
+                        # 特殊处理情人节（2月14日）
+                        elif current_date.month == 2 and current_date.day == 14:
+                            # 情人节在多个国家庆祝
+                            valentine_countries = ["US", "GB", "CA", "AU", "DE", "FR", "IT", "ES", "JP", "KR", "BR", "MX"]
+                            if country_code in valentine_countries:
+                                country_names = {
+                                    "US": "美国", "GB": "英国", "CA": "加拿大", "AU": "澳大利亚",
+                                    "DE": "德国", "FR": "法国", "IT": "意大利", "ES": "西班牙",
+                                    "JP": "日本", "KR": "韩国", "BR": "巴西", "MX": "墨西哥"
+                                }
+                                country_name = country_names.get(country_code, country_code)
+                                holiday_detections.append(f"{country_name}:情人节")
+                                self._log_message("DEBUG", f"检测到{country_code}情人节")
+                        
+                        # 特殊处理复活节（计算方法复杂，这里使用简单近似：3月22日-4月25日之间的周日）
+                        elif current_date.month in [3, 4]:
+                            # 复活节通常在3月22日到4月25日之间的周日
+                            easter_start = date(current_date.year, 3, 22)
+                            easter_end = date(current_date.year, 4, 25)
+                            if easter_start <= current_date <= easter_end and current_date.weekday() == 6:  # 周日
+                                easter_countries = ["US", "GB", "CA", "AU", "DE", "FR", "IT", "ES", "BR", "MX"]
+                                if country_code in easter_countries:
+                                    country_names = {
+                                        "US": "美国", "GB": "英国", "CA": "加拿大", "AU": "澳大利亚",
+                                        "DE": "德国", "FR": "法国", "IT": "意大利", "ES": "西班牙",
+                                        "BR": "巴西", "MX": "墨西哥"
+                                    }
+                                    country_name = country_names.get(country_code, country_code)
+                                    holiday_detections.append(f"{country_name}:复活节")
+                                    self._log_message("DEBUG", f"检测到{country_code}复活节")
+                        
+                        # 特殊处理感恩节（美国：11月第四个周四；加拿大：10月第二个周一）
+                        elif current_date.month == 11 and current_date.weekday() == 3:  # 周四
+                            # 检查是否为11月第四个周四（美国感恩节）
+                            if 22 <= current_date.day <= 28:  # 第四个周四在22-28日之间
+                                if country_code in ["US"]:
+                                    country_names = {"US": "美国"}
+                                    country_name = country_names.get(country_code, country_code)
+                                    holiday_detections.append(f"{country_name}:感恩节")
+                                    self._log_message("DEBUG", f"检测到{country_code}感恩节")
+                        elif current_date.month == 10 and current_date.weekday() == 0:  # 周一
+                            # 检查是否为10月第二个周一（加拿大感恩节）
+                            if 8 <= current_date.day <= 14:  # 第二个周一在8-14日之间
+                                if country_code in ["CA"]:
+                                    country_names = {"CA": "加拿大"}
+                                    country_name = country_names.get(country_code, country_code)
+                                    holiday_detections.append(f"{country_name}:感恩节")
+                                    self._log_message("DEBUG", f"检测到{country_code}感恩节")
+                        
+                        # 特殊处理元旦（1月1日）
+                        elif current_date.month == 1 and current_date.day == 1:
+                            # 元旦在几乎所有国家都庆祝
+                            new_year_countries = ["US", "GB", "CA", "AU", "DE", "FR", "IT", "ES", "JP", "KR", "BR", "MX", "RU", "IN"]
+                            if country_code in new_year_countries:
+                                country_names = {
+                                    "US": "美国", "GB": "英国", "CA": "加拿大", "AU": "澳大利亚",
+                                    "DE": "德国", "FR": "法国", "IT": "意大利", "ES": "西班牙",
+                                    "JP": "日本", "KR": "韩国", "BR": "巴西", "MX": "墨西哥",
+                                    "RU": "俄罗斯", "IN": "印度"
+                                }
+                                country_name = country_names.get(country_code, country_code)
+                                holiday_detections.append(f"{country_name}:元旦")
+                                self._log_message("DEBUG", f"检测到{country_code}元旦")
+                        
+                        # 特殊处理劳动节（5月1日）
+                        elif current_date.month == 5 and current_date.day == 1:
+                            # 劳动节在多个国家庆祝
+                            labor_day_countries = ["DE", "FR", "IT", "ES", "RU", "BR", "MX", "IN", "CN"]
+                            if country_code in labor_day_countries:
+                                country_names = {
+                                    "DE": "德国", "FR": "法国", "IT": "意大利", "ES": "西班牙",
+                                    "RU": "俄罗斯", "BR": "巴西", "MX": "墨西哥", "IN": "印度",
+                                    "CN": "中国"
+                                }
+                                country_name = country_names.get(country_code, country_code)
+                                holiday_detections.append(f"{country_name}:劳动节")
+                                self._log_message("DEBUG", f"检测到{country_code}劳动节")
+                        
+                        # 特殊处理独立日/国庆日
+                        # 美国独立日（7月4日）
+                        elif current_date.month == 7 and current_date.day == 4:
+                            if country_code in ["US"]:
+                                country_names = {"US": "美国"}
+                                country_name = country_names.get(country_code, country_code)
+                                holiday_detections.append(f"{country_name}:独立日")
+                                self._log_message("DEBUG", f"检测到{country_code}独立日")
+                        
+                        # 法国国庆日（7月14日）
+                        elif current_date.month == 7 and current_date.day == 14:
+                            if country_code in ["FR"]:
+                                country_names = {"FR": "法国"}
+                                country_name = country_names.get(country_code, country_code)
+                                holiday_detections.append(f"{country_name}:国庆日")
+                                self._log_message("DEBUG", f"检测到{country_code}国庆日")
+                        
+                        # 加拿大国庆日（7月1日）
+                        elif current_date.month == 7 and current_date.day == 1:
+                            if country_code in ["CA"]:
+                                country_names = {"CA": "加拿大"}
+                                country_name = country_names.get(country_code, country_code)
+                                holiday_detections.append(f"{country_name}:国庆日")
+                                self._log_message("DEBUG", f"检测到{country_code}国庆日")
+                        
+                        # 特殊处理母亲节（5月第二个周日）
+                        elif current_date.month == 5 and current_date.weekday() == 6:  # 周日
+                            # 检查是否为5月第二个周日
+                            if 8 <= current_date.day <= 14:  # 第二个周日在8-14日之间
+                                mother_day_countries = ["US", "GB", "CA", "AU", "DE", "FR", "IT", "ES", "JP", "BR", "MX"]
+                                if country_code in mother_day_countries:
+                                    country_names = {
+                                        "US": "美国", "GB": "英国", "CA": "加拿大", "AU": "澳大利亚",
+                                        "DE": "德国", "FR": "法国", "IT": "意大利", "ES": "西班牙",
+                                        "JP": "日本", "BR": "巴西", "MX": "墨西哥"
+                                    }
+                                    country_name = country_names.get(country_code, country_code)
+                                    holiday_detections.append(f"{country_name}:母亲节")
+                                    self._log_message("DEBUG", f"检测到{country_code}母亲节")
+                        
+                        # 特殊处理父亲节（6月第三个周日）
+                        elif current_date.month == 6 and current_date.weekday() == 6:  # 周日
+                            # 检查是否为6月第三个周日
+                            if 15 <= current_date.day <= 21:  # 第三个周日在15-21日之间
+                                father_day_countries = ["US", "GB", "CA", "AU", "DE", "FR", "IT", "ES", "JP", "BR", "MX"]
+                                if country_code in father_day_countries:
+                                    country_names = {
+                                        "US": "美国", "GB": "英国", "CA": "加拿大", "AU": "澳大利亚",
+                                        "DE": "德国", "FR": "法国", "IT": "意大利", "ES": "西班牙",
+                                        "JP": "日本", "BR": "巴西", "MX": "墨西哥"
+                                    }
+                                    country_name = country_names.get(country_code, country_code)
+                                    holiday_detections.append(f"{country_name}:父亲节")
+                                    self._log_message("DEBUG", f"检测到{country_code}父亲节")
                             
                     except holidays.exceptions.UnknownCountryError:
                         error_msg = f"不支持的国家代码: {country_code}，请检查配置"
