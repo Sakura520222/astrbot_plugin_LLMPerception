@@ -2,7 +2,7 @@ AstrBot LLMPerception 插件
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.5.0-blue)
+![Version](https://img.shields.io/badge/version-1.6.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![GitHub Stars](https://img.shields.io/github/stars/Sakura520222/astrbot_plugin_LLMPerception?style=social)
@@ -65,7 +65,7 @@ LLMPerception 是一个为 AstrBot 设计的智能环境感知插件，旨在增
 ## 📋 更新日志
 
 ### v1.6.0 (当前版本)
-**发布日期**: 2025-10-27
+**发布日期**: 2025-10-28
 
 #### ✨ 新增功能
 - 🌍 **多国家节假日支持**：新增支持美国、英国、日本、德国、法国等15+个国家的节假日识别
