@@ -77,5 +77,30 @@
         "description": "启用详细日志输出",
         "default": true,
         "hint": "启用后会在每次请求处理时输出详细信息"
+    },
+    "enable_emotion_perception": {
+        "type": "bool",
+        "description": "启用情感状态感知",
+        "default": true,
+        "hint": "启用后会在消息中分析用户的情感和语气状态"
+    },
+    "emotion_analysis_method": {
+        "type": "string",
+        "description": "情感分析方法",
+        "default": "rule_based",
+        "hint": "选择情感分析的方法：rule_based(基于规则)或ml_based(基于机器学习)",
+        "enum": ["rule_based", "ml_based"]
+    },
+    "enable_tone_detection": {
+        "type": "bool",
+        "description": "启用语气识别",
+        "default": true,
+        "hint": "启用后会在消息中识别语气类型（疑问、感叹、陈述等）"
+    },
+    "emotion_threshold": {
+        "type": "float",
+        "description": "情感识别阈值",
+        "default": 0.3,
+        "hint": "情感识别的敏感度阈值，值越小越敏感（0-1之间）"
     }
 }

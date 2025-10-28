@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, date
 import zoneinfo
+import re
 
 from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent, filter
@@ -38,6 +39,31 @@ PLATFORM_DISPLAY_NAMES = {
     "misskey": "Misskey",
 }
 
+# 情感分析相关常量
+EMOTION_KEYWORDS = {
+    "开心": ["开心", "高兴", "快乐", "喜悦", "愉快", "兴奋", "幸福", "满意", "棒", "好", "赞", "不错", "太棒了", "太好了", "喜欢"],
+    "生气": ["生气", "愤怒", "恼火", "不爽", "讨厌", "烦", "气死", "可恶", "混蛋", "垃圾", "差劲", "糟糕"],
+    "悲伤": ["悲伤", "难过", "伤心", "痛苦", "失望", "沮丧", "郁闷", "想哭", "泪", "可怜", "不幸"],
+    "惊讶": ["惊讶", "惊奇", "震惊", "意外", "没想到", "居然", "竟然", "天哪", "哇", "哦"],
+    "恐惧": ["害怕", "恐惧", "担心", "担忧", "紧张", "吓", "恐怖", "可怕", "危险"],
+    "中性": ["正常", "一般", "还行", "可以", "了解", "知道", "明白", "收到", "好的"]
+}
+
+TONE_KEYWORDS = {
+    "疑问": ["吗", "呢", "什么", "为什么", "怎么", "如何", "是否", "会不会", "能不能", "可不可以"],
+    "感叹": ["！", "！", "啊", "呀", "哇", "哦", "天哪", "太", "真", "非常", "特别"],
+    "陈述": ["。", "，", "的", "了", "在", "是", "有", "可以", "能够", "应该"]
+}
+
+EMOTION_EMOJIS = {
+    "开心": "😊",
+    "生气": "😠", 
+    "悲伤": "😢",
+    "惊讶": "😲",
+    "恐惧": "😨",
+    "中性": "😐"
+}
+
 
 @register("add_time", "miaomiao", "让每次请求都携带这次请求的时间", "1.0.0")
 class MyPlugin(Star):
@@ -65,6 +91,12 @@ class MyPlugin(Star):
         self.custom_rules = config.get("custom_perception_rules", [])
         self.log_level = config.get("log_level", "INFO")
         self.enable_detailed_logging = config.get("enable_detailed_logging", True)
+        
+        # 情感感知相关配置
+        self.enable_emotion = config.get("enable_emotion_perception", True)
+        self.emotion_method = config.get("emotion_analysis_method", "rule_based")
+        self.enable_tone = config.get("enable_tone_detection", True)
+        self.emotion_threshold = config.get("emotion_threshold", 0.3)
 
         # 初始化时区
         try:
@@ -82,6 +114,8 @@ class MyPlugin(Star):
         holidays_status = "已启用" if HOLIDAYS_AVAILABLE else "受限(未安装holidays)"
         custom_status = f"已启用({len(self.custom_rules)}条规则)" if self.enable_custom else "未启用"
         detailed_logging_status = "已启用" if self.enable_detailed_logging else "未启用"
+        emotion_status = f"已启用({self.emotion_method})" if self.enable_emotion else "未启用"
+        tone_status = "已启用" if self.enable_tone else "未启用"
         
         # 格式化国家列表显示
         country_display = ", ".join(self.holiday_country)
@@ -92,6 +126,8 @@ class MyPlugin(Star):
             f"LLMPerception 插件已加载 | 时区: {timezone_name} | "
             f"节假日感知: {self.enable_holiday}(国家列表: [{country_display}], 中国库: {calendar_status}, 国际库: {holidays_status}) | "
             f"平台感知: {self.enable_platform} | "
+            f"情感感知: {emotion_status} | "
+            f"语气识别: {tone_status} | "
             f"自定义感知: {custom_status} | "
             f"详细日志: {detailed_logging_status} | "
             f"日志级别: {self.log_level}"
@@ -305,6 +341,214 @@ class MyPlugin(Star):
 
         return " | ".join(custom_parts)
 
+    def _get_emotion_info(self, event: AstrMessageEvent) -> str:
+        """获取情感状态信息"""
+        if not self.enable_emotion:
+            return ""
+
+        # 提取消息文本
+        message_text = self._extract_message_text(event)
+        if not message_text:
+            return ""
+
+        emotion_parts = []
+
+        # 情感分析
+        emotion_result = self._analyze_emotion(message_text)
+        if emotion_result and emotion_result != "中性":  # 只有当情感不是中性时才添加
+            emotion_emoji = EMOTION_EMOJIS.get(emotion_result, "")
+            emotion_parts.append(f"情感:{emotion_result}{emotion_emoji}")
+            self._log_message("DEBUG", f"情感分析结果: {emotion_result}")
+
+        # 语气识别
+        if self.enable_tone:
+            tone_result = self._analyze_tone(message_text)
+            if tone_result:
+                emotion_parts.append(f"语气:{tone_result}")
+                self._log_message("DEBUG", f"语气识别结果: {tone_result}")
+
+        return " | ".join(emotion_parts)
+
+    def _extract_message_text(self, event: AstrMessageEvent) -> str:
+        """从消息事件中提取文本内容"""
+        if not event.message_obj or not hasattr(event.message_obj, 'message'):
+            return ""
+        
+        text_parts = []
+        for seg in event.message_obj.message:
+            if hasattr(seg, 'text') and seg.text:
+                text_parts.append(seg.text.strip())
+        
+        return " ".join(text_parts)
+
+    def _analyze_emotion(self, text: str) -> str:
+        """分析文本情感（基于规则的方法）"""
+        if self.emotion_method == "rule_based":
+            return self._rule_based_emotion_analysis(text)
+        else:
+            # 预留机器学习方法
+            return self._rule_based_emotion_analysis(text)
+
+    def _rule_based_emotion_analysis(self, text: str) -> str:
+        """基于规则的情感分析"""
+        if not text or len(text.strip()) == 0:
+            return "中性"
+        
+        emotion_scores = {emotion: 0.0 for emotion in EMOTION_KEYWORDS.keys()}
+        
+        # 预处理文本
+        cleaned_text = self._preprocess_text(text)
+        
+        # 从表情符号检测情绪
+        emoji_emotion, emoji_score = self._detect_emotion_from_emoji(text)
+        if emoji_emotion:
+            emotion_scores[emoji_emotion] += emoji_score
+        
+        # 关键词匹配
+        for emotion, keywords in EMOTION_KEYWORDS.items():
+            for keyword in keywords:
+                if self._contains_word(cleaned_text, keyword):
+                    emotion_scores[emotion] += 1.0
+        
+        # 找到最高分的情绪
+        max_emotion = "中性"
+        max_score = emotion_scores["中性"]
+        
+        for emotion, score in emotion_scores.items():
+            if score > max_score or (score == max_score and emotion != "中性"):
+                max_score = score
+                max_emotion = emotion
+        
+        # 设置阈值（降低到0.5以提高敏感度）
+        threshold = 0.5
+        if max_score < threshold:
+            return "中性"
+        
+        return max_emotion
+
+    def _preprocess_text(self, text: str) -> str:
+        """预处理文本"""
+        # 转换为小写进行匹配
+        return text.lower()
+    
+    def _contains_word(self, text: str, word: str) -> bool:
+        """检查文本是否包含特定词语（优化的中文匹配）"""
+        # 对于中文，使用更智能的匹配方式
+        # 主要目标是避免单字关键词的部分匹配问题
+        
+        # 如果关键词是单字，需要更严格的边界检查
+        if len(word) == 1:
+            # 单字关键词：使用正则表达式检查是否作为独立词语
+            # 更宽松的边界检查：允许在非中文字符边界出现
+            pattern = r'(^|[^\u4e00-\u9fff])' + re.escape(word) + r'([^\u4e00-\u9fff]|$)'
+            return bool(re.search(pattern, text))
+        else:
+            # 多字关键词：直接使用in检查，因为多字词不容易出现部分匹配问题
+            # 例如"开心"在"我很开心"中是完整匹配，在"开心果"中也是完整匹配
+            return word in text
+    
+    def _detect_emotion_from_emoji(self, text: str) -> tuple:
+        """从表情符号检测情感"""
+        emoji_emotion = None
+        emoji_score = 0
+        
+        # 常见表情符号与情感的映射
+        emoji_mapping = {
+            "😊": "开心", "😂": "开心", "😄": "开心", "😍": "开心", "🥰": "开心",
+            "😠": "生气", "😡": "生气", "🤬": "生气", "💢": "生气",
+            "😢": "悲伤", "😭": "悲伤", "😔": "悲伤", "🥺": "悲伤",
+            "😲": "惊讶", "😮": "惊讶", "🤯": "惊讶", "😱": "惊讶",
+            "😨": "恐惧", "😰": "恐惧", "😥": "恐惧", "😓": "恐惧"
+        }
+        
+        for emoji, emotion in emoji_mapping.items():
+            if emoji in text:
+                emoji_emotion = emotion
+                emoji_score = 2  # 表情符号权重较高
+                break  # 只取第一个匹配的表情符号
+        
+        return emoji_emotion, emoji_score
+
+    def _analyze_tone(self, text: str) -> str:
+        """分析文本语气"""
+        if not text or len(text.strip()) == 0:
+            return "陈述"
+        
+        tone_scores = {"疑问": 0, "感叹": 0, "陈述": 0}
+        
+        # 预处理文本
+        cleaned_text = self._preprocess_text(text)
+        
+        # 标点符号分析
+        question_marks = cleaned_text.count("?") + cleaned_text.count("？")
+        exclamation_marks = cleaned_text.count("!") + cleaned_text.count("！")
+        
+        tone_scores["疑问"] += question_marks * 2
+        tone_scores["感叹"] += exclamation_marks * 2
+        
+        # 疑问词分析
+        question_words = ["吗", "呢", "什么", "为什么", "怎么", "如何", "是否", "会不会", "能不能", "可不可以", "为何", "哪里", "何时", "谁", "哪个"]
+        for word in question_words:
+            if self._contains_word(cleaned_text, word):
+                tone_scores["疑问"] += 1
+        
+        # 感叹词分析
+        exclamation_words = ["啊", "呀", "哇", "哦", "天哪", "太", "真", "非常", "特别", "超级", "极其", "无比", "简直", "实在"]
+        for word in exclamation_words:
+            if self._contains_word(cleaned_text, word):
+                tone_scores["感叹"] += 1
+        
+        # 句子长度和结构分析
+        sentences = self._split_sentences(text)
+        if sentences:
+            # 如果句子以疑问词开头或结尾
+            first_sentence = sentences[0].lower()
+            last_sentence = sentences[-1].lower()
+            
+            if any(first_sentence.startswith(word) for word in question_words):
+                tone_scores["疑问"] += 2
+            if any(last_sentence.endswith(word) for word in question_words):
+                tone_scores["疑问"] += 1
+                
+            if any(first_sentence.startswith(word) for word in exclamation_words):
+                tone_scores["感叹"] += 2
+            if any(last_sentence.endswith(word) for word in exclamation_words):
+                tone_scores["感叹"] += 1
+        
+        # 找到最高分的语气
+        max_tone = "陈述"
+        max_score = tone_scores.get("陈述", 0)
+        
+        for tone, score in tone_scores.items():
+            if score > max_score:
+                max_score = score
+                max_tone = tone
+        
+        # 改进混合语气识别
+        question_score = tone_scores["疑问"]
+        exclamation_score = tone_scores["感叹"]
+        
+        # 如果疑问和感叹分数都很高，可能是混合语气
+        if question_score >= 2 and exclamation_score >= 2:
+            # 根据分数比例判断主要语气
+            if question_score > exclamation_score:
+                return "疑问感叹"
+            else:
+                return "感叹疑问"
+        elif question_score >= 3 and exclamation_score >= 1:
+            return "疑问感叹"
+        elif exclamation_score >= 3 and question_score >= 1:
+            return "感叹疑问"
+        
+        return max_tone
+    
+    def _split_sentences(self, text: str) -> list:
+        """简单分割句子"""
+        # 使用标点符号分割句子
+        import re
+        sentences = re.split(r'[。！？!?]', text)
+        return [s.strip() for s in sentences if s.strip()]
+
     def _safe_evaluate_condition(self, condition: str, variables: dict) -> bool:
         """安全地评估条件表达式"""
         try:
@@ -473,6 +717,12 @@ class MyPlugin(Star):
         if custom_info:
             perception_parts.append(custom_info)
             self._log_message("DEBUG", f"自定义信息: {custom_info}")
+
+        # 添加情感感知信息
+        emotion_info = self._get_emotion_info(event)
+        if emotion_info:
+            perception_parts.append(emotion_info)
+            self._log_message("DEBUG", f"情感信息: {emotion_info}")
 
         # 组合所有感知信息
         perception_text = " | ".join(perception_parts)
